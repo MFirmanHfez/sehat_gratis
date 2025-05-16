@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kesehatan AI - Chat</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #e3f2fd, #fce4ec);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .chat-container {
+      width: 100%;
+      max-width: 600px;
+      height: 90vh;
+      background: #ffffff;
+      border-radius: 20px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid #ddd;
+    }
+
+    .chat-header {
+      background: #4CAF50;
+      color: white;
+      padding: 18px;
+      font-size: 20px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .chat-box {
+      padding: 20px;
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      background: #fafafa;
+    }
+
+    .bubble {
+      max-width: 75%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      line-height: 1.5;
+      position: relative;
+      animation: fadeIn 0.3s ease-in-out;
+      word-wrap: break-word;
+      white-space: pre-line;
+    }
+
+    .user {
+      align-self: flex-end;
+      background: #d4f7dc;
+      border-bottom-right-radius: 5px;
+    }
+
+    .bot {
+      align-self: flex-start;
+      background: #f1f1f1;
+      border-bottom-left-radius: 5px;
+    }
+
+    .chat-input {
+      display: flex;
+      border-top: 1px solid #ccc;
+      padding: 10px;
+      background: #fff;
+    }
+
+    .chat-input textarea {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-size: 16px;
+      resize: none;
+      height: 50px;
+      outline: none;
+    }
+
+    .chat-input button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 0 20px;
+      margin-left: 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background 0.3s;
+    }
+
+    .chat-input button:hover {
+      background: #45a049;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 600px) {
+      .chat-box {
+        padding: 15px;
+      }
+
+      .chat-input textarea {
+        font-size: 14px;
+      }
+
+      .chat-input button {
+        font-size: 14px;
+        padding: 0 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">Kesehatan AI</div>
+    <div class="chat-box" id="chatBox"></div>
+    <div class="chat-input">
+      <textarea id="input" placeholder="Tulis pertanyaan..." onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); kirimPertanyaan();}"></textarea>
+      <button onclick="kirimPertanyaan()">Kirim</button>
+    </div>
+  </div>
+
+  <script>
+    const chatBox = document.getElementById("chatBox");
+    const input = document.getElementById("input");
+
+    const riwayat = [];
+
+    async function kirimPertanyaan() {
+      const pertanyaan = input.value.trim();
+      if (!pertanyaan) return;
+
+      tampilkanChat("user", pertanyaan);
+      input.value = "";
+
+      riwayat.push({ role: "user", content: pertanyaan });
+
+      const loadingEl = tampilkanChat("bot", "Sedang mengetik...");
+
+      try {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer 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",  // <-- Ganti dengan API Key Anda
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "openai/gpt-3.5-turbo",
+            messages: riwayat,
+            max_tokens: 400
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.choices && data.choices.length > 0) {
+          let jawaban = data.choices[0].message.content;
+          jawaban = jawaban.replace(/[*#>\-`_~]/g, "").trim();
+          loadingEl.innerText = jawaban;
+          riwayat.push({ role: "assistant", content: jawaban });
+        } else if (data.error) {
+          loadingEl.innerText = `Error: ${data.error.message}`;
+        } else {
+          loadingEl.innerText = "Maaf, tidak ada jawaban.";
+        }
+      } catch (err) {
+        loadingEl.innerText = "Terjadi kesalahan saat memproses pertanyaan.";
+        console.error(err);
+      }
+    }
+
+    function tampilkanChat(role, text) {
+      const el = document.createElement("div");
+      el.className = `bubble ${role}`;
+      el.innerText = text;
+      chatBox.appendChild(el);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      return el;
+    }
+  </script>
+</body>
+</html>
